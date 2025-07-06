@@ -1,0 +1,33 @@
+import urllib.request
+import urllib.parse
+import re
+import time
+
+def crawl(url, depth, visited=None, domain=None, indent=0):
+    if visited is None:
+        visited = set()
+    if domain is None:
+        domain = urllib.parse.urlparse(url).netloc
+    if depth < 0 or url in visited:
+        return
+    visited.add(url)
+    print('  ' * indent + url)
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            if 'text/html' not in response.getheader('Content-Type', ''):
+                return
+            html = response.read().decode('utf-8', errors='replace')
+            links = re.findall(r'href=["\'](.*?)["\']', html)
+            for link in links:
+                absolute = urllib.parse.urljoin(url, link)
+                link_domain = urllib.parse.urlparse(absolute).netloc
+                if link_domain == domain and absolute.startswith('http'):
+                    crawl(absolute, depth-1, visited, domain, indent+1)
+                    time.sleep(0.5)  # Simulate limited concurrency
+    except Exception as e:
+        print('  ' * (indent+1) + f'[Error: {e}]')
+
+if __name__ == "__main__":
+    start_url = input("Enter starting URL: ")
+    max_depth = int(input("Enter crawl depth: "))
+    crawl(start_url, max_depth)
